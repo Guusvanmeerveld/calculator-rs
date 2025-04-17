@@ -32,6 +32,10 @@ fn main() {
                 if token != Token::Unrecognized {
                     println!("{:?}", token);
                 }
+
+                if token == Token::EOF {
+                    break;
+                }
             }
         }
         Err(err) => {

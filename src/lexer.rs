@@ -13,6 +13,7 @@ pub enum Token {
     Literal(Literal),
     // Identifier(Identifier),
     Whitespace,
+    EOF,
     Unrecognized,
 }
 
@@ -34,6 +35,33 @@ struct Buffer<S: Read> {
     position: usize,
 }
 
+impl<S: Read> Buffer<S> {
+    fn new(stream: S) -> Self {
+        Self {
+            stream,
+            inner: vec![0; BLOCK_SIZE],
+            position: 0,
+        }
+    }
+
+    fn read_block(&mut self) -> Result<usize> {
+        if self.inner.len() != BLOCK_SIZE {
+            self.inner.resize(BLOCK_SIZE, 0);
+        }
+
+        let byte_count = self.stream.read(&mut self.inner)?;
+
+        // println!("Bytes read: {}", byte_count);
+
+        // Remove the part of the vec that is not used.
+        if byte_count < BLOCK_SIZE {
+            self.inner.truncate(byte_count);
+        }
+
+        Ok(byte_count)
+    }
+}
+
 impl<S: Read> Iterator for Buffer<S> {
     type Item = u8;
 
@@ -48,7 +76,7 @@ impl<S: Read> Iterator for Buffer<S> {
 
         let char = self.inner[self.position];
 
-        // If current position is going out of our block size, we reset.
+        // If current position is going out of vector, we reset.
         if self.position == (self.inner.len() - 1) {
             self.position = 0;
         } else {
@@ -56,29 +84,6 @@ impl<S: Read> Iterator for Buffer<S> {
         }
 
         Some(char)
-    }
-}
-
-impl<S: Read> Buffer<S> {
-    fn new(stream: S) -> Self {
-        Self {
-            stream,
-            inner: vec![0; BLOCK_SIZE],
-            position: 0,
-        }
-    }
-
-    fn read_block(&mut self) -> Result<usize> {
-        let byte_count = self.stream.read(&mut self.inner)?;
-
-        // println!("Bytes read: {}", byte_count,);
-
-        // Fill the rest of the vec with zeros if not fully filled up.
-        if byte_count < self.inner.capacity() {
-            self.inner[byte_count..].fill(0);
-        }
-
-        Ok(byte_count)
     }
 }
 
@@ -93,8 +98,13 @@ impl<S: Read> Lexer<S> {
         }
     }
 
-    fn read_number(&mut self, char: u8) -> Option<isize> {
-        if !char.is_ascii_digit() {
+    /// Check if item is a digit or a "." (For example if it is a float)
+    fn is_digit(char: &u8) -> bool {
+        char.is_ascii_digit() || *char == b'.'
+    }
+
+    fn read_number_literal(&mut self, char: u8) -> Option<Literal> {
+        if !Self::is_digit(&char) {
             return None;
         };
 
@@ -104,14 +114,35 @@ impl<S: Read> Lexer<S> {
         literal_as_ascii.push(char);
 
         // Only if the next bytes are also digits, we advance.
-        while let Some(digit) = self.buf.next_if(|item| item.is_ascii_digit()) {
+        while let Some(digit) = self.buf.next_if(Self::is_digit) {
             literal_as_ascii.push(digit);
         }
 
-        // First convert ASCII to String, then parse to number value.
-        let number_value: isize = String::from_utf8(literal_as_ascii).ok()?.parse().ok()?;
+        // If it contains a '.' but no digits then this is not a number literal.
+        if literal_as_ascii.contains(&b'.')
+            && !literal_as_ascii.iter().any(|char| char.is_ascii_digit())
+        {
+            return None;
+        }
 
-        Some(number_value)
+        let seperator_count = literal_as_ascii.iter().filter(|x| **x == b'.').count();
+
+        let literal_as_string = String::from_utf8(literal_as_ascii).ok()?;
+
+        // If there are multiple '.', this is not a valid float
+        if seperator_count > 1 {
+            return None;
+        } else if seperator_count == 1 {
+            // Parse to float value.
+            let float_value: f64 = literal_as_string.parse().ok()?;
+
+            Some(Literal::Float(float_value))
+        } else {
+            // Parse to number value.
+            let number_value: isize = literal_as_string.parse().ok()?;
+
+            Some(Literal::Number(number_value))
+        }
     }
 }
 
@@ -119,27 +150,32 @@ impl<R: Read> Iterator for Lexer<R> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.buf.next()? {
-            b'+' => Some(Token::Plus),
-            b'-' => Some(Token::Minus),
-            b'*' => Some(Token::Multiply),
-            b'/' => Some(Token::Divide),
-            b'^' => Some(Token::Power),
-            b'(' => Some(Token::LeftParenthesis),
-            b')' => Some(Token::RightParenthesis),
-            char => {
-                if char.is_ascii_whitespace() {
-                    return Some(Token::Whitespace);
+        // Reads the next character of the buffer.
+        if let Some(char) = self.buf.next() {
+            match char {
+                b'+' => Some(Token::Plus),
+                b'-' => Some(Token::Minus),
+                b'*' => Some(Token::Multiply),
+                b'/' => Some(Token::Divide),
+                b'^' => Some(Token::Power),
+                b'(' => Some(Token::LeftParenthesis),
+                b')' => Some(Token::RightParenthesis),
+                char => {
+                    if char.is_ascii_whitespace() {
+                        return Some(Token::Whitespace);
+                    }
+
+                    if let Some(literal) = self.read_number_literal(char) {
+                        return Some(Token::Literal(literal));
+                    }
+
+                    Some(Token::Unrecognized)
+
+                    // if self.is_letter() {}
                 }
-
-                if let Some(number) = self.read_number(char) {
-                    return Some(Token::Literal(Literal::Number(number)));
-                }
-
-                Some(Token::Unrecognized)
-
-                // if self.is_letter() {}
             }
+        } else {
+            Some(Token::EOF)
         }
     }
 }
