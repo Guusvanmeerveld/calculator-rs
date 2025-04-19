@@ -4,6 +4,7 @@ use clap::{Parser as ClapParser, Subcommand};
 use lexer::Lexer;
 use parser::Parser;
 
+mod ast;
 mod error;
 mod lexer;
 mod parser;
