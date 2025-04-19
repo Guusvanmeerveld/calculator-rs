@@ -53,6 +53,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "calculator"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "thiserror",
+]
+
+[[package]]
 name = "clap"
 version = "4.5.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -109,14 +117,6 @@ name = "is_terminal_polyfill"
 version = "1.70.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
-
-[[package]]
-name = "niks"
-version = "0.1.0"
-dependencies = [
- "clap",
- "thiserror",
-]
 
 [[package]]
 name = "once_cell"
