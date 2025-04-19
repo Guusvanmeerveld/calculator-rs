@@ -4,17 +4,26 @@ use std::{io::Read, iter::Peekable};
 #[derive(Debug, PartialEq)]
 pub enum Token {
     Plus,
-    Minus,
-    Multiply,
-    Divide,
-    Power,
+    Dash,
+    Star,
+    ForwardSlash,
+    Hat,
     LeftParenthesis,
     RightParenthesis,
     Literal(Literal),
     // Identifier(Identifier),
-    Whitespace,
     EOF,
     Unrecognized,
+}
+
+impl Token {
+    pub fn is_expression(&self) -> bool {
+        matches!(self, Token::Dash | Token::Plus)
+    }
+
+    pub fn is_term(&self) -> bool {
+        matches!(self, Token::Star | Token::ForwardSlash | Token::Hat)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -87,6 +96,7 @@ impl<S: Read> Iterator for Buffer<S> {
     }
 }
 
+/// Reads the input and tries to tokenize it.
 pub struct Lexer<S: Read> {
     buf: Peekable<Buffer<S>>,
 }
@@ -154,15 +164,16 @@ impl<R: Read> Iterator for Lexer<R> {
         if let Some(char) = self.buf.next() {
             match char {
                 b'+' => Some(Token::Plus),
-                b'-' => Some(Token::Minus),
-                b'*' => Some(Token::Multiply),
-                b'/' => Some(Token::Divide),
-                b'^' => Some(Token::Power),
+                b'-' => Some(Token::Dash),
+                b'*' => Some(Token::Star),
+                b'/' => Some(Token::ForwardSlash),
+                b'^' => Some(Token::Hat),
                 b'(' => Some(Token::LeftParenthesis),
                 b')' => Some(Token::RightParenthesis),
                 char => {
                     if char.is_ascii_whitespace() {
-                        return Some(Token::Whitespace);
+                        // Skip whitespace
+                        return self.next();
                     }
 
                     if let Some(literal) = self.read_number_literal(char) {
