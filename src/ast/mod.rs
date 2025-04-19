@@ -1,9 +1,10 @@
 use std::fmt::Display;
 
-use crate::{
-    error::Error,
-    lexer::{Literal, Token},
-};
+pub use literal::Literal;
+
+use crate::{error::Error, lexer::Token};
+
+mod literal;
 
 #[derive(Debug)]
 pub enum Expression {
@@ -28,7 +29,7 @@ impl Display for Expression {
             Self::BinaryExpr { op, lhs, rhs } => {
                 let op_string = match op {
                     BinaryOperator::Add => "+",
-                    BinaryOperator::Subtract => "^",
+                    BinaryOperator::Subtract => "-",
                     BinaryOperator::Divide => "/",
                     BinaryOperator::Multiply => "*",
                     BinaryOperator::Power => "^",

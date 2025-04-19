@@ -1,11 +1,13 @@
 use std::{fs::File, path::PathBuf};
 
 use clap::{Parser as ClapParser, Subcommand};
+use interpreter::{Interpreter, SimpleInterpreter};
 use lexer::Lexer;
 use parser::Parser;
 
 mod ast;
 mod error;
+mod interpreter;
 mod lexer;
 mod parser;
 
@@ -28,9 +30,14 @@ fn main() {
         Ok(file) => {
             let mut lexer = Lexer::new(file);
 
-            println!("{}", Parser::parse(&mut lexer).unwrap());
+            let expression = Parser::parse(&mut lexer).unwrap();
+            // println!("Lexer errors: {:?}", lexer.errors());
 
-            println!("Lexer errors: {:?}", lexer.errors())
+            println!("{}", expression);
+
+            let output = SimpleInterpreter::eval(expression).unwrap();
+
+            println!("Output of expression: {}", output)
         }
         Err(err) => {
             println!("Failed to open file: {}", err);

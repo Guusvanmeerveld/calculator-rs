@@ -1,5 +1,9 @@
-use crate::error::{Error, Result, SyntaxError};
-use std::{fmt::Display, io::Read, iter::Peekable};
+use crate::{
+    ast::Literal,
+    error::{Error, Result, SyntaxError},
+};
+
+use std::{io::Read, iter::Peekable};
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
@@ -12,7 +16,6 @@ pub enum Token {
     RightParenthesis,
     Literal(Literal),
     // Identifier(Identifier),
-    EOF,
     Unrecognized,
 }
 
@@ -23,26 +26,6 @@ impl Token {
 
     pub fn is_term(&self) -> bool {
         matches!(self, Token::Star | Token::ForwardSlash | Token::Hat)
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Literal {
-    // String(String),
-    Number(isize),
-    Float(f64),
-}
-
-impl Display for Literal {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Number(number) => number.to_string(),
-                Self::Float(float) => float.to_string(),
-            }
-        )
     }
 }
 
@@ -159,14 +142,32 @@ impl<S: Read> Lexer<S> {
             return None;
         } else if seperator_count == 1 {
             // Parse to float value.
-            let float_value: f64 = literal_as_string.parse().ok()?;
 
-            Some(Literal::Float(float_value))
+            match literal_as_string.parse() {
+                Ok(float_value) => Some(Literal::Float(float_value)),
+                Err(err) => {
+                    self.errors.push(Error::SyntaxError(SyntaxError::ParseFloat(
+                        literal_as_string,
+                        err,
+                    )));
+
+                    None
+                }
+            }
         } else {
             // Parse to number value.
-            let number_value: isize = literal_as_string.parse().ok()?;
+            match literal_as_string.parse() {
+                Ok(number_value) => Some(Literal::Number(number_value)),
+                Err(err) => {
+                    self.errors
+                        .push(Error::SyntaxError(SyntaxError::ParseInteger(
+                            literal_as_string,
+                            err,
+                        )));
 
-            Some(Literal::Number(number_value))
+                    None
+                }
+            }
         }
     }
 
