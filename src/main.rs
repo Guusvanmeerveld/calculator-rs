@@ -25,9 +25,11 @@ fn main() {
 
     match File::open(cli.file) {
         Ok(file) => {
-            let lexer = Lexer::new(file);
+            let mut lexer = Lexer::new(file);
 
-            println!("{:?}", Parser::parse(lexer));
+            println!("{}", Parser::parse(&mut lexer).unwrap());
+
+            println!("Lexer errors: {:?}", lexer.errors())
         }
         Err(err) => {
             println!("Failed to open file: {}", err);

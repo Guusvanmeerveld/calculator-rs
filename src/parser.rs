@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::io::Read;
 use std::iter::Peekable;
 
@@ -16,6 +17,31 @@ pub enum Expression {
         rhs: Box<Expression>,
     },
     Literal(Literal),
+}
+
+impl Display for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Literal(literal) => {
+                write!(f, "{}", literal.to_string())
+            }
+            Self::BinaryExpr { op, lhs, rhs } => {
+                let op_string = match op {
+                    BinaryOperator::Add => "+",
+                    BinaryOperator::Subtract => "^",
+                    BinaryOperator::Divide => "/",
+                    BinaryOperator::Multiply => "*",
+                    BinaryOperator::Power => "^",
+                };
+
+                write!(f, "{} {} {}", lhs, op_string, rhs)
+            }
+            Self::UnaryExpr { op, child } => match op {
+                UnaryOperator::Parenthesis => write!(f, "({})", child),
+                UnaryOperator::Negation => write!(f, "-{}", child),
+            },
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -73,7 +99,7 @@ impl TryFrom<Token> for BinaryOperator {
 pub struct Parser {}
 
 impl Parser {
-    fn factor<R: Read>(lexer: &mut Peekable<Lexer<R>>) -> Result<Expression> {
+    fn factor<R: Read>(lexer: &mut Peekable<&mut Lexer<R>>) -> Result<Expression> {
         match lexer.next() {
             Some(token) => match token {
                 Token::Literal(literal) => return Ok(Expression::Literal(literal)),
@@ -118,7 +144,7 @@ impl Parser {
         }
     }
 
-    fn term<R: Read>(lexer: &mut Peekable<Lexer<R>>) -> Result<Expression> {
+    fn term<R: Read>(lexer: &mut Peekable<&mut Lexer<R>>) -> Result<Expression> {
         let lhs = Self::factor(lexer)?;
 
         while let Some(operator_token) = lexer.next_if(Token::is_term) {
@@ -134,7 +160,7 @@ impl Parser {
         return Ok(lhs);
     }
 
-    fn expr<R: Read>(lexer: &mut Peekable<Lexer<R>>) -> Result<Expression> {
+    fn expr<R: Read>(lexer: &mut Peekable<&mut Lexer<R>>) -> Result<Expression> {
         let lhs = Self::term(lexer)?;
 
         while let Some(operator_token) = lexer.next_if(Token::is_expression) {
@@ -150,7 +176,7 @@ impl Parser {
         return Ok(lhs);
     }
 
-    pub fn parse<R: Read>(lexer: Lexer<R>) -> Result<Expression> {
+    pub fn parse<R: Read>(lexer: &mut Lexer<R>) -> Result<Expression> {
         Self::expr(&mut lexer.peekable())
     }
 }

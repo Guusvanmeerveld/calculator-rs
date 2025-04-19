@@ -1,5 +1,5 @@
-use crate::error::Result;
-use std::{io::Read, iter::Peekable};
+use crate::error::{Error, Result, SyntaxError};
+use std::{fmt::Display, io::Read, iter::Peekable};
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
@@ -31,6 +31,19 @@ pub enum Literal {
     // String(String),
     Number(isize),
     Float(f64),
+}
+
+impl Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Number(number) => number.to_string(),
+                Self::Float(float) => float.to_string(),
+            }
+        )
+    }
 }
 
 // #[derive(Debug, PartialEq)]
@@ -99,12 +112,14 @@ impl<S: Read> Iterator for Buffer<S> {
 /// Reads the input and tries to tokenize it.
 pub struct Lexer<S: Read> {
     buf: Peekable<Buffer<S>>,
+    errors: Vec<Error>,
 }
 
 impl<S: Read> Lexer<S> {
     pub fn new(input: S) -> Self {
         Lexer {
             buf: Buffer::new(input).peekable(),
+            errors: Vec::new(),
         }
     }
 
@@ -154,6 +169,10 @@ impl<S: Read> Lexer<S> {
             Some(Literal::Number(number_value))
         }
     }
+
+    pub fn errors(&self) -> &[Error] {
+        &self.errors
+    }
 }
 
 impl<R: Read> Iterator for Lexer<R> {
@@ -161,32 +180,32 @@ impl<R: Read> Iterator for Lexer<R> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // Reads the next character of the buffer.
-        if let Some(char) = self.buf.next() {
-            match char {
-                b'+' => Some(Token::Plus),
-                b'-' => Some(Token::Dash),
-                b'*' => Some(Token::Star),
-                b'/' => Some(Token::ForwardSlash),
-                b'^' => Some(Token::Hat),
-                b'(' => Some(Token::LeftParenthesis),
-                b')' => Some(Token::RightParenthesis),
-                char => {
-                    if char.is_ascii_whitespace() {
-                        // Skip whitespace
-                        return self.next();
-                    }
-
-                    if let Some(literal) = self.read_number_literal(char) {
-                        return Some(Token::Literal(literal));
-                    }
-
-                    Some(Token::Unrecognized)
-
-                    // if self.is_letter() {}
+        match self.buf.next()? {
+            b'+' => Some(Token::Plus),
+            b'-' => Some(Token::Dash),
+            b'*' => Some(Token::Star),
+            b'/' => Some(Token::ForwardSlash),
+            b'^' => Some(Token::Hat),
+            b'(' => Some(Token::LeftParenthesis),
+            b')' => Some(Token::RightParenthesis),
+            char => {
+                if char.is_ascii_whitespace() {
+                    // Skip whitespace
+                    return self.next();
                 }
+
+                if let Some(literal) = self.read_number_literal(char) {
+                    return Some(Token::Literal(literal));
+                }
+
+                self.errors
+                    .push(Error::SyntaxError(SyntaxError::UnrecognizedToken(
+                        char::from_u32(char as u32).unwrap_or('0'),
+                    )));
+
+                return Some(Token::Unrecognized);
+                // if self.is_letter() {}
             }
-        } else {
-            Some(Token::EOF)
         }
     }
 }
