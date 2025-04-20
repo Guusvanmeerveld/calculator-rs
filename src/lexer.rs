@@ -73,7 +73,7 @@ impl<S: Read> Iterator for Buffer<S> {
     fn next(&mut self) -> Option<Self::Item> {
         // If we are at the 0 position, get some data.
         if self.position == 0 {
-            if self.read_block().ok()? == 0 {
+            if self.read_block().expect("Failed to read data from stream") == 0 {
                 // Stop if we don't read any new data.
                 return None;
             };
