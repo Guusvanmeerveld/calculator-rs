@@ -4,7 +4,7 @@ pub use literal::Literal;
 
 use crate::{error::Error, lexer::Token};
 
-mod literal;
+pub mod literal;
 
 #[derive(Debug)]
 pub enum Expression {
@@ -71,8 +71,8 @@ impl TryFrom<Token> for BinaryOperator {
             Token::ForwardSlash => Ok(BinaryOperator::Divide),
             Token::Hat => Ok(BinaryOperator::Power),
             _ => {
-                // Handle non binary operator token
-                todo!()
+                // Handle
+                panic!("Got {0} when expecting a binary operator token", value)
             }
         }
     }

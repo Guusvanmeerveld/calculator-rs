@@ -3,7 +3,7 @@ use crate::{
     error::{Error, Result, SyntaxError},
 };
 
-use std::{io::Read, iter::Peekable};
+use std::{fmt::Display, io::Read, iter::Peekable};
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
@@ -16,7 +16,25 @@ pub enum Token {
     RightParenthesis,
     Literal(Literal),
     // Identifier(Identifier),
-    Unrecognized,
+    Unrecognized(char),
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let output = match self {
+            Token::Plus => "+",
+            Token::Dash => "-",
+            Token::Star => "*",
+            Token::ForwardSlash => "/",
+            Token::Hat => "^",
+            Token::LeftParenthesis => "(",
+            Token::RightParenthesis => ")",
+            Token::Literal(literal) => &literal.to_string(),
+            Token::Unrecognized(char) => &char.to_string(),
+        };
+
+        write!(f, "{}", output)
+    }
 }
 
 impl Token {
@@ -142,14 +160,11 @@ impl<S: Read> Lexer<S> {
             return None;
         } else if seperator_count == 1 {
             // Parse to float value.
-
             match literal_as_string.parse() {
                 Ok(float_value) => Some(Literal::Float(float_value)),
                 Err(err) => {
-                    self.errors.push(Error::SyntaxError(SyntaxError::ParseFloat(
-                        literal_as_string,
-                        err,
-                    )));
+                    self.errors
+                        .push(Error::SyntaxError(SyntaxError::ParseFloat(err)));
 
                     None
                 }
@@ -157,13 +172,10 @@ impl<S: Read> Lexer<S> {
         } else {
             // Parse to number value.
             match literal_as_string.parse() {
-                Ok(number_value) => Some(Literal::Number(number_value)),
+                Ok(number_value) => Some(Literal::Int(number_value)),
                 Err(err) => {
                     self.errors
-                        .push(Error::SyntaxError(SyntaxError::ParseInteger(
-                            literal_as_string,
-                            err,
-                        )));
+                        .push(Error::SyntaxError(SyntaxError::ParseInt(err)));
 
                     None
                 }
@@ -199,12 +211,14 @@ impl<R: Read> Iterator for Lexer<R> {
                     return Some(Token::Literal(literal));
                 }
 
-                self.errors
-                    .push(Error::SyntaxError(SyntaxError::UnrecognizedToken(
-                        char::from_u32(char as u32).unwrap_or('0'),
-                    )));
+                // self.errors
+                //     .push(Error::SyntaxError(SyntaxError::UnrecognizedToken(
+                //         char::from_u32(char as u32).unwrap_or('0'),
+                //     )));
 
-                return Some(Token::Unrecognized);
+                return Some(Token::Unrecognized(
+                    char::from_u32(char as u32).unwrap_or('0'),
+                ));
                 // if self.is_letter() {}
             }
         }

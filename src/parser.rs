@@ -2,7 +2,7 @@ use std::io::Read;
 use std::iter::Peekable;
 
 use crate::ast::{Expression, UnaryOperator};
-use crate::error::Result;
+use crate::error::{Error, Result, SyntaxError};
 use crate::lexer::{Lexer, Token};
 
 /// Grammar:
@@ -24,7 +24,7 @@ use crate::lexer::{Lexer, Token};
 /// F → - F
 ///
 /// F → n
-pub struct Parser {}
+pub struct Parser;
 
 impl Parser {
     fn factor<R: Read>(lexer: &mut Peekable<&mut Lexer<R>>) -> Result<Expression> {
@@ -42,13 +42,11 @@ impl Parser {
                                     child: Box::new(child),
                                 });
                             } else {
-                                // Handle missing closing parenthesis
-                                todo!()
+                                todo!("Handle missing closing parenthesis")
                             }
                         }
                         None => {
-                            // Handle missing closing parenthesis
-                            todo!()
+                            todo!("Handle missing closing parenthesis")
                         }
                     }
                 }
@@ -60,14 +58,16 @@ impl Parser {
                         child: Box::new(child),
                     });
                 }
-                _ => {
-                    // Handle other tokens
-                    todo!()
+                Token::Unrecognized(char) => {
+                    Err(Error::SyntaxError(SyntaxError::UnrecognizedToken(char)))
+                }
+
+                token => {
+                    todo!("Handle other tokens: {}", token)
                 }
             },
             None => {
-                // Handle missing factor
-                todo!()
+                todo!("Handle missing factor")
             }
         }
     }

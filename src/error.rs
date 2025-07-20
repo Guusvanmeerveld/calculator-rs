@@ -11,6 +11,9 @@ pub enum Error {
 
     #[error("Syntax error: {0}")]
     SyntaxError(SyntaxError),
+
+    #[error("Operator failed: {0}")]
+    OperatorError(#[from] derive_more::BinaryError),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -19,10 +22,10 @@ pub enum SyntaxError {
     UnrecognizedToken(char),
 
     #[error("Failed to parse float: {0}")]
-    ParseFloat(String, ParseFloatError),
+    ParseFloat(#[from] ParseFloatError),
 
     #[error("Failed to parse integer: {0}")]
-    ParseInteger(String, ParseIntError),
+    ParseInt(#[from] ParseIntError),
 }
 
 pub type Result<T> = result::Result<T, Error>;

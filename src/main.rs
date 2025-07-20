@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{self, Write, stdout},
+    io::{Write, stdout},
     path::PathBuf,
 };
 
@@ -40,8 +40,11 @@ fn main() {
             Ok(file) => {
                 let mut lexer = Lexer::new(file);
 
-                let expression = Parser::parse(&mut lexer).unwrap();
-                // println!("Lexer errors: {:?}", lexer.errors());
+                let expression = Parser::parse(&mut lexer);
+
+                println!("Lexer errors: {:?}", lexer.errors());
+
+                let expression = expression.unwrap();
 
                 println!("{}", expression);
 
